@@ -1,0 +1,15 @@
+.PHONY : test build all clean
+
+MOD_NAME = vmec_helper
+
+all: build
+
+build: ./helper/src/vmec_helper.f90 
+	f2py3 -c --f90flags='-Wno-tabs -fopenmp -O2 -fPIC' -lgomp $< -m $(MOD_NAME)
+	mv $(MOD_NAME).* ./helper/
+
+clean:
+	rm -f ./helper/*.so
+
+test:
+	python3 ./test/test.py 
