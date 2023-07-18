@@ -4,9 +4,9 @@ MOD_NAME = vmec_helper
 
 all: build
 
-build: ./helper/src/vmec_helper.f90 
+build: ./vmec_utils/helper/src/vmec_helper.f90 
 	f2py3 -c --f90flags='-Wno-tabs -fopenmp -O2 -fPIC' -lgomp $< -m $(MOD_NAME)
-	mv $(MOD_NAME).* ./helper/
+	mv $(MOD_NAME).* ./vmec_utils/helper/
 
 clean:
 	rm -f ./helper/*.so

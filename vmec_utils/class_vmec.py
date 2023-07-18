@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.io import netcdf_file
-from ..helper import vh
+from .helper import vh
 
 
 var_keys = {

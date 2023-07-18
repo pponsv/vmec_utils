@@ -1,8 +1,7 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.io import netcdf_file
 from scipy.optimize import basinhopping
-from ..helper import vh
+from .helper import vh
 
 
 class MyBounds:

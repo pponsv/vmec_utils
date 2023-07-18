@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from .fn import normalize, equal_aspect
-from .booz import Booz
-from .vmec import Vmec
+from . import Booz
+from . import Vmec
 
 
 def make_figax_3d(**kwargs):
