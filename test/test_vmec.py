@@ -1,9 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from plotting_styles import pub_style_one, pub_style_two, rc_context
 
 # import vmec_helper as vh
-import vmec_library as vl
+import vmec_utils as vl
 from time import time
 
 

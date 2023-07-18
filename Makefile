@@ -12,4 +12,5 @@ clean:
 	rm -f ./helper/*.so
 
 test:
-	python3 ./test/test.py 
+	cd .. && python3 ./vmec_utils/test/test_booz.py
+	cd .. && python3 ./vmec_utils/test/test_vmec.py

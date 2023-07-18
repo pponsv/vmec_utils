@@ -2,7 +2,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import vmec_library as vl
+import vmec_utils as vl
 from time import time
 
 
