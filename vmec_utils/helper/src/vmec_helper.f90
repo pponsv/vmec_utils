@@ -2,7 +2,78 @@ module vh
 
    implicit none
 
+   complex(8), allocatable :: exp_mth(:,:), exp_nph(:,:)
+
 contains
+
+   subroutine initialize(ms, ns, th, ph, n_m, n_th, n_ph)
+      integer(8), intent(in) :: n_m, n_th, n_ph
+      real(8), intent(in) :: th(n_th), ph(n_ph), ms(n_m), ns(n_m)
+
+      if (allocated(exp_mth)) deallocate(exp_mth)
+      if (allocated(exp_nph)) deallocate(exp_nph)
+
+      allocate(exp_mth(n_m, n_th))
+      allocate(exp_nph(n_m, n_ph))
+
+      exp_mth = exp(complex(0, 1) * outer(ms, th))
+      exp_nph = exp(complex(0, -1) * outer(ns, ph))
+
+   end subroutine initialize
+
+   subroutine genvar_new(fnm, th, ph, ms, ns, n_s, n_m, n_th, n_ph, typ, out)
+      integer(8), intent(in) :: n_m, n_th, n_ph, n_s
+      real(8), intent(in) :: fnm(n_m, n_s), th(n_th), ph(n_ph), ms(n_m), ns(n_m)
+      character, intent(in) :: typ
+      real(8), intent(out) :: out(n_s, n_th, n_ph)
+
+      complex(8) :: tmp_out(n_s, n_th, n_ph)
+      integer(8) :: i, j, k
+
+      !$OMP PARALLEL DO PRIVATE(i, j, k)
+      do k = 1, n_ph
+         do j = 1, n_th
+            do i = 1, n_s
+               tmp_out(i, j, k) = sum(fnm(:, i)*exp_mth(:,j)*exp_nph(:,k))
+            end do
+         end do
+      end do
+      !$OMP END PARALLEL DO
+
+      if (typ == 'c') then
+         out = tmp_out % re
+      else if (typ == 's') then
+         out = tmp_out % im
+      end if
+
+   end subroutine genvar_new
+
+   subroutine genvar_modi_new(fnm, th, ph, ms, ns, modi, n_s, n_m, n_th, n_ph, typ, out)
+      integer(8), intent(in) :: n_m, n_th, n_ph, n_s
+      real(8), intent(in) :: fnm(n_m, n_s), th(n_th), ph(n_ph), ms(n_m), ns(n_m), modi(n_m)
+      character, intent(in) :: typ
+      real(8), intent(out) :: out(n_s, n_th, n_ph)
+
+      complex(8) :: tmp_out(n_s, n_th, n_ph)
+      integer(8) :: i, j, k
+
+      !$OMP PARALLEL DO PRIVATE(i, j, k)
+      do k = 1, n_ph
+         do j = 1, n_th
+            do i = 1, n_s
+               tmp_out(i, j, k) = sum(fnm(:, i)*modi*exp_mth(:,j)*exp_nph(:,k))
+            end do
+         end do
+      end do
+      !$OMP END PARALLEL DO
+
+      if (typ == 'c') then
+         out = tmp_out % re
+      else if (typ == 's') then
+         out = tmp_out % im
+      end if
+
+   end subroutine genvar_modi_new
 
    subroutine genvar(fnm, th, ph, ms, ns, n_s, n_m, n_th, n_ph, typ, out)
       integer(8), intent(in) :: n_m, n_th, n_ph, n_s
