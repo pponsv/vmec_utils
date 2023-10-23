@@ -31,7 +31,8 @@ class Booz:
         self.read_woutdata(woutfile=woutfile)
         self.s_idx = self.woutdata["jlist"]
         self.s_vmec = np.linspace(0, 1, self.woutdata["ns_b"])
-        self.s = self.s_vmec[self.s_idx]
+        self.s = self.s_vmec[self.s_idx - 1]
+        self.iota = self.woutdata["iota_b"][self.s_idx - 1]
         self.th = theta
         self.ph = phi
 
@@ -47,6 +48,13 @@ class Booz:
     def print_sizes(self):
         for key in self.woutdata:
             print(key, self.woutdata[key].shape)
+
+    def get_all_single(self, s_idx, theta, phi):
+        self.th = theta
+        self.ph = phi
+        self.get_vars(s_idx=s_idx)
+        self.get_xyzs(s_idx=s_idx)
+        self.get_vectors()
 
     def get_vars(self, s_idx=None):
         if s_idx == None:
@@ -99,7 +107,15 @@ class Booz:
             theta=thphi[0], phi=thphi[1], s_idx=s_idx, xyz=xyz_0
         )
         bounds = MyBounds(xmin=[-np.pi, 0], xmax=[np.pi, np.pi * 2])
-        res = basinhopping(tfun, init, 100, T=2.0, stepsize=3.0, accept_test=bounds)
+        res = basinhopping(
+            tfun,
+            init,
+            100,
+            T=20.0,
+            stepsize=5.0,
+            accept_test=bounds,
+            callback=callback,
+        )
         if not res.success:
             print("unsuccessful")
         theta, phi = res.x[0], res.x[1]
@@ -158,6 +174,7 @@ class Booz:
 
     def get_vectors(self):
         self.get_vars()
+        self.get_xyzs()
         self.get_derivatives()
         sph = np.sin(self.vars["PHI"])
         cph = np.cos(self.vars["PHI"])
