@@ -29,12 +29,39 @@ class Booz:
         self.vecs = {}
         self.xyzs = {}
         self.read_woutdata(woutfile=woutfile)
-        self.s_idx = self.woutdata["jlist"]
+        self.s_idx = self.woutdata["jlist"] - 1
         self.s_vmec = np.linspace(0, 1, self.woutdata["ns_b"])
-        self.s = self.s_vmec[self.s_idx - 1]
-        self.iota = self.woutdata["iota_b"][self.s_idx - 1]
-        self.th = theta
-        self.ph = phi
+        self.s = self.s_vmec[self.s_idx]
+        self.iota = self.woutdata["iota_b"][self.s_idx]
+        self._th = theta
+        self._ph = phi
+        self.init_vh()
+
+    @property
+    def th(self):
+        return self._th
+
+    @th.setter
+    def th(self, th):
+        self._th = th
+        self.init_vh()
+
+    @property
+    def ph(self):
+        return self._ph
+
+    @ph.setter
+    def ph(self, ph):
+        self._ph = ph
+        self.init_vh()
+
+    def init_vh(self):
+        vh.initialize(
+            ms=self.woutdata["ixm_b"],
+            ns=self.woutdata["ixn_b"],
+            th=self.th,
+            ph=self.ph,
+        )
 
     def read_woutdata(self, woutfile):
         with netcdf_file(woutfile, "r") as wfile:
@@ -52,6 +79,7 @@ class Booz:
     def get_all_single(self, s_idx, theta, phi):
         self.th = theta
         self.ph = phi
+        self.init_vh()
         self.get_vars(s_idx=s_idx)
         self.get_xyzs(s_idx=s_idx)
         self.get_vectors()
@@ -63,14 +91,20 @@ class Booz:
             s_idx = np.array([s_idx])
         ms = self.woutdata["ixm_b"]
         ns = self.woutdata["ixn_b"]
-        R = vh.genvar(self.woutdata["rmnc_b"][s_idx].T, self.th, self.ph, ms, ns, "c")
-        Z = vh.genvar(self.woutdata["zmns_b"][s_idx].T, self.th, self.ph, ms, ns, "s")
-        P = vh.genvar(self.woutdata["pmns_b"][s_idx].T, self.th, self.ph, ms, ns, "s")
+        R = vh.genvar_new(
+            self.woutdata["rmnc_b"][s_idx].T, self.th, self.ph, ms, ns, "c"
+        )
+        Z = vh.genvar_new(
+            self.woutdata["zmns_b"][s_idx].T, self.th, self.ph, ms, ns, "s"
+        )
+        P = vh.genvar_new(
+            self.woutdata["pmns_b"][s_idx].T, self.th, self.ph, ms, ns, "s"
+        )
         PHI = self.ph + P
-        mod_b = vh.genvar(
+        mod_b = vh.genvar_new(
             self.woutdata["bmnc_b"][s_idx].T, self.th, self.ph, ms, ns, "c"
         )
-        sqrt_g = vh.genvar(
+        sqrt_g = vh.genvar_new(
             self.woutdata["gmn_b"][s_idx].T, self.th, self.ph, ms, ns, "c"
         )
         self.vars = {
@@ -114,7 +148,7 @@ class Booz:
             T=20.0,
             stepsize=5.0,
             accept_test=bounds,
-            callback=callback,
+            # callback=callback,
         )
         if not res.success:
             print("unsuccessful")
@@ -142,22 +176,22 @@ class Booz:
         dph_ds = +vh.dgen_ds(
             self.woutdata["pmns_b"].T, self.s, self.th, self.ph, ms, ns, typ="s"
         )
-        dr_dth = -vh.genvar_modi(
+        dr_dth = -vh.genvar_modi_new(
             self.woutdata["rmnc_b"].T, self.th, self.ph, ms, ns, ms, typ="s"
         )
-        dz_dth = +vh.genvar_modi(
+        dz_dth = +vh.genvar_modi_new(
             self.woutdata["zmns_b"].T, self.th, self.ph, ms, ns, ms, typ="c"
         )
-        dph_dth = +vh.genvar_modi(
+        dph_dth = +vh.genvar_modi_new(
             self.woutdata["pmns_b"].T, self.th, self.ph, ms, ns, ms, typ="c"
         )
-        dr_dph = +vh.genvar_modi(
+        dr_dph = +vh.genvar_modi_new(
             self.woutdata["rmnc_b"].T, self.th, self.ph, ms, ns, ns, typ="s"
         )
-        dz_dph = -vh.genvar_modi(
+        dz_dph = -vh.genvar_modi_new(
             self.woutdata["zmns_b"].T, self.th, self.ph, ms, ns, ns, typ="c"
         )
-        dph_dph = 1 - vh.genvar_modi(
+        dph_dph = 1 - vh.genvar_modi_new(
             self.woutdata["pmns_b"].T, self.th, self.ph, ms, ns, ns, typ="c"
         )
         self.ders = {
@@ -172,30 +206,33 @@ class Booz:
             "dph_dph": dph_dph,
         }
 
-    def get_vectors(self):
+    def get_vectors(self, get_grads=True):
         self.get_vars()
         self.get_xyzs()
         self.get_derivatives()
-        sph = np.sin(self.vars["PHI"])
-        cph = np.cos(self.vars["PHI"])
+        exph = np.exp(1j * self.vars["PHI"])
+        r_exph = self.vars["R"] * exph
+        dr_ds_exph = self.ders["dr_ds"] * exph
+        dr_dth_exph = self.ders["dr_dth"] * exph
+        dr_dph_exph = self.ders["dr_dph"] * exph
         e_s = np.array(
             [
-                self.ders["dr_ds"] * cph - self.vars["R"] * sph * self.ders["dph_ds"],
-                self.ders["dr_ds"] * sph + self.vars["R"] * cph * self.ders["dph_ds"],
+                dr_ds_exph.real - r_exph.imag * self.ders["dph_ds"],
+                dr_ds_exph.imag + r_exph.real * self.ders["dph_ds"],
                 self.ders["dz_ds"],
             ]
         )
         e_th = np.array(
             [
-                self.ders["dr_dth"] * cph - self.vars["R"] * sph * self.ders["dph_dth"],
-                self.ders["dr_dth"] * sph + self.vars["R"] * cph * self.ders["dph_dth"],
+                dr_dth_exph.real - r_exph.imag * self.ders["dph_dth"],
+                dr_dth_exph.imag + r_exph.real * self.ders["dph_dth"],
                 self.ders["dz_dth"],
             ]
         )
         e_ph = np.array(
             [
-                self.ders["dr_dph"] * cph - self.vars["R"] * sph * self.ders["dph_dph"],
-                self.ders["dr_dph"] * sph + self.vars["R"] * cph * self.ders["dph_dph"],
+                dr_dph_exph.real - r_exph.imag * self.ders["dph_dph"],
+                dr_dph_exph.imag + r_exph.real * self.ders["dph_dph"],
                 self.ders["dz_dph"],
             ]
         )
@@ -204,9 +241,14 @@ class Booz:
             e_s,
             np.cross(e_th, e_ph, axisa=0, axisb=0, axisc=0),
         )
-        grad_s = np.cross(e_th, e_ph, axisa=0, axisb=0, axisc=0) / jac
-        grad_th = np.cross(e_ph, e_s, axisa=0, axisb=0, axisc=0) / jac
-        grad_ph = np.cross(e_s, e_th, axisa=0, axisb=0, axisc=0) / jac
+        if get_grads is True:
+            grad_s = np.cross(e_th, e_ph, axisa=0, axisb=0, axisc=0) / jac
+            grad_th = np.cross(e_ph, e_s, axisa=0, axisb=0, axisc=0) / jac
+            grad_ph = np.cross(e_s, e_th, axisa=0, axisb=0, axisc=0) / jac
+        else:
+            grad_s = None
+            grad_th = None
+            grad_ph = None
         self.vecs = {
             "e_s": e_s,
             "e_th": e_th,

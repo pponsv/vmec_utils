@@ -33,9 +33,24 @@ class Vmec:
         self.xyzs = {}
         self.read_woutdata(woutfile=woutfile)
         self.s = np.linspace(0, 1, self.woutdata["ns"])
-        self.th = theta
-        self.ph = phi
-        return
+        self._th = theta
+        self._ph = phi
+
+    @property
+    def th(self):
+        return self._th
+
+    @th.setter
+    def th(self, th):
+        self._th = th
+
+    @property
+    def ph(self):
+        return self._ph
+
+    @ph.setter
+    def ph(self, ph):
+        self._ph = ph
 
     def read_woutdata(self, woutfile):
         with netcdf_file(woutfile, "r") as wfile:

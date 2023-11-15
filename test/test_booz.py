@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import vmec_utils as vl
 from time import time
+from tictoc import tic, toc
 
 
 def make_time(fun, *args, **kwargs):
@@ -68,8 +69,8 @@ def make_test(vfile, th, ph):
 vfile = "/home/pedro/Documents/tmp/vmecs/tjii_0.10/wout_tj2_eccdw_01.nc"
 bfile = "/home/pedro/Documents/tmp/vmecs/tjii_0.10/boozmn_tj2_eccdw_01.nc"
 
-thetas = np.linspace(0, 2 * np.pi, 20)
-phis = np.linspace(0, 0.25 * np.pi, 25)
+thetas = np.linspace(0, 2 * np.pi, 32)
+phis = np.linspace(0, 0.25 * np.pi, 64)
 
 # vmec = vl.Vmec(vfile, theta=thetas, phi=phis)
 booz = vl.Booz(bfile, theta=thetas, phi=phis)
@@ -83,7 +84,9 @@ quantity = None
 
 s_idx = -1
 
-booz.get_vectors()
+tic()
+booz.get_vectors(get_grads=False)
+toc("Get_vectors")
 print(booz.s_vmec[s_idx])
 
 # %%
