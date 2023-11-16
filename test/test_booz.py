@@ -69,8 +69,8 @@ def make_test(vfile, th, ph):
 vfile = "/home/pedro/Documents/tmp/vmecs/tjii_0.10/wout_tj2_eccdw_01.nc"
 bfile = "/home/pedro/Documents/tmp/vmecs/tjii_0.10/boozmn_tj2_eccdw_01.nc"
 
-thetas = np.linspace(0, 2 * np.pi, 32)
-phis = np.linspace(0, 0.25 * np.pi, 64)
+thetas = np.linspace(0, 2 * np.pi, 64)
+phis = np.linspace(0, 0.25 * np.pi, 128)
 
 # vmec = vl.Vmec(vfile, theta=thetas, phi=phis)
 booz = vl.Booz(bfile, theta=thetas, phi=phis)
@@ -85,31 +85,31 @@ quantity = None
 s_idx = -1
 
 tic()
-booz.get_vectors(get_grads=False)
+booz.get_vectors(get_grads=True)
 toc("Get_vectors")
 print(booz.s_vmec[s_idx])
 
 # %%
 
-booz_plotter = vl.Plotter(booz)
-# booz.get_xyzs(s_idx=-1)
-booz.get_xyzs()
-# ax = booz_plotter.plot_surf(quantity="mod_b", s_idx=s_idx, alpha=0.1)
-fig, ax = vl.plot.make_figax_3d()
+# booz_plotter = vl.Plotter(booz)
+# # booz.get_xyzs(s_idx=-1)
+# booz.get_xyzs()
+# # ax = booz_plotter.plot_surf(quantity="mod_b", s_idx=s_idx, alpha=0.1)
+# fig, ax = vl.plot.make_figax_3d()
 
-idph = 0
-print(booz.xyzs["xs"].shape)
-booz_plotter.plot_slice(np.s_[:, :, idph], ax=ax, color="b", alpha=0.1)
-booz_plotter.plot_slice(np.s_[:, 4, :], ax=ax, color="g", alpha=0.1)
-booz_plotter.plot_slice(np.s_[-1, :, :], ax=ax, color="gray", alpha=0.1)
-for idph in [0, 5]:
-    for idth in range(0, len(booz.th)):
-        booz_plotter.plot_vecbase(
-            idth, idph, ax=ax, length=0.05, s_idx=-1, normalize=True
-        )
+# idph = 0
+# print(booz.xyzs["xs"].shape)
+# booz_plotter.plot_slice(np.s_[:, :, idph], ax=ax, color="b", alpha=0.1)
+# booz_plotter.plot_slice(np.s_[:, 4, :], ax=ax, color="g", alpha=0.1)
+# booz_plotter.plot_slice(np.s_[-1, :, :], ax=ax, color="gray", alpha=0.1)
+# for idph in [0, 5]:
+#     for idth in range(0, len(booz.th)):
+#         booz_plotter.plot_vecbase(
+#             idth, idph, ax=ax, length=0.05, s_idx=-1, normalize=True
+#         )
 
 
-plt.show()
+# plt.show()
 
 # %%
 
