@@ -14,7 +14,7 @@ class Plotter:
         self.data = data
 
     def plot_slice(self, slice=np.s_[:, :, -1], ax=None, **kwargs):
-        print(self.data.xyzs["xs"].shape)
+        # print(self.data.xyzs["xs"].shape)
         if ax is None:
             fig, ax = plt.subplots(1, 1, subplot_kw={"projection": "3d"})
         ax.plot_surface(

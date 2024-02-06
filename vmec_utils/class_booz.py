@@ -82,7 +82,8 @@ class Booz:
         self.init_vh()
         self.get_vars(s_idx=s_idx)
         self.get_xyzs(s_idx=s_idx)
-        self.get_vectors()
+        self.get_derivatives()
+        self.calculate_vectors()
 
     def get_vars(self, s_idx=None):
         if s_idx == None:
@@ -210,6 +211,9 @@ class Booz:
         self.get_vars()
         self.get_xyzs()
         self.get_derivatives()
+        self.calculate_vectors(get_grads=get_grads)
+
+    def calculate_vectors(self, get_grads=True):
         exph = np.exp(1j * self.vars["PHI"])
         r_exph = self.vars["R"] * exph
         dr_ds_exph = self.ders["dr_ds"] * exph
