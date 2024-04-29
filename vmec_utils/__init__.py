@@ -4,4 +4,5 @@ from . import helper
 
 from . import fn
 from . import commands
+from . import utils
 from .plot import Plotter
