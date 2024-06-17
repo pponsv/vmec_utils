@@ -9,39 +9,6 @@ from .class_booz import Booz
 from .class_vmec import Vmec
 
 
-def make_coef_array(
-    coefs, xm, xn, len_th, len_ph, deriv_order=0, deriv_dir=""
-):
-    """Make a 3D array of coefficients with the correct shape to be inverted."""
-    coef_array = np.zeros(
-        (coefs.shape[0], len_th, len_ph), dtype=np.complex128
-    )
-    if deriv_order == 0:
-        coef_array[:, xm, -xn] = coefs
-    elif deriv_order == 1:
-        if deriv_dir == "th":
-            coef_array[:, xm, -xn] = 1j * xm * coefs
-        elif deriv_dir == "zt":
-            coef_array[:, xm, -xn] = -1j * xn * coefs
-        else:
-            raise ValueError("Invalid deriv_dir")
-    return coef_array
-
-
-def invert_fourier(
-    coefs_nm, xm, xn, len_th, len_ph, deriv_order=0, deriv_dir="", kind=""
-):
-    coef_array = make_coef_array(
-        coefs_nm, xm, xn, len_th, len_ph, deriv_order, deriv_dir
-    )
-    if kind == "cos":
-        return np.fft.ifft2(coef_array, norm="forward").real
-    elif kind == "sin":
-        return np.fft.ifft2(coef_array, norm="forward").imag
-    else:
-        return np.fft.ifft2(coef_array, norm="forward")
-
-
 def get_xyz(rs, phs, zs, slc=np.s_[:]):
     return (
         rs[slc] * np.cos(phs[slc]),

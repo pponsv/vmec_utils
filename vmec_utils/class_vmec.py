@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.io import netcdf_file
 from .helper import vh
+from scipy.interpolate import interp1d
+from .fft_utils import invert_fourier, make_coef_array
 
 
 var_keys = {
@@ -20,61 +22,127 @@ var_keys = {
 
 
 class Vmec:
-    def __init__(
-        self,
-        woutfile,
-        theta=np.linspace(0, 2 * np.pi, 100),
-        phi=np.linspace(0, 2 * np.pi, 100),
-    ):
+    def __init__(self, woutfile, n_th, n_ph):
+        self.n_th = n_th
+        self.n_ph = n_ph
         self.woutdata = {}
         self.vars = {}
         self.ders = {}
         self.vecs = {}
         self.xyzs = {}
         self.read_woutdata(woutfile=woutfile)
+        self.nm_tot = self.woutdata["mnmax"].copy()
+        self.nm_nyq_tot = self.woutdata["mnmax_nyq"].copy()
         self.s = np.linspace(0, 1, self.woutdata["ns"])
-        self._th = theta
-        self._ph = phi
-
-    @property
-    def th(self):
-        return self._th
-
-    @th.setter
-    def th(self, th):
-        self._th = th
-
-    @property
-    def ph(self):
-        return self._ph
-
-    @ph.setter
-    def ph(self, ph):
-        self._ph = ph
+        self.ds = np.mean(np.diff(self.s))
+        self.s_half = self.s[1:] - self.ds / 2
+        self.get_coefs_full_mesh()
+        self.th = np.linspace(0, 2 * np.pi, n_th, endpoint=False)
+        self.ph = np.linspace(0, 2 * np.pi, n_ph, endpoint=False)
 
     def read_woutdata(self, woutfile):
         with netcdf_file(woutfile, "r") as wfile:
             for var in wfile.variables:
                 self.woutdata[var] = wfile.variables[var].data.copy()
 
-    def print_vars(self):
-        for key in sorted(self.woutdata.keys()):
-            print(key)
+    def interp_to_full_mesh(self, xmn):
+        """
+        Not sure if this is done correctly
+        """
+        f = interp1d(
+            self.s_half,
+            xmn[1:, :],
+            fill_value="extrapolate",  # type: ignore
+            axis=0,
+            kind="cubic",
+        )
+        return f(self.s)
 
-    def print_sizes(self):
-        for key in sorted(self.woutdata.keys()):
-            print(key, self.woutdata[key].shape)
+    def get_coefs_full_mesh(self):
+        self.xm = self.woutdata["xm"].astype(int)
+        self.xn = self.woutdata["xn"].astype(int)
+        self.xm_nyq = self.woutdata["xm_nyq"].astype(int)
+        self.xn_nyq = self.woutdata["xn_nyq"].astype(int)
+        self.rmnc = self.woutdata["rmnc"]
+        self.zmns = self.woutdata["zmns"]
+        self.lmns = self.interp_to_full_mesh(self.woutdata["lmns"])
+        self.gmnc = self.interp_to_full_mesh(self.woutdata["gmnc"])
+        self.bmnc = self.interp_to_full_mesh(self.woutdata["bmnc"])
+        self.bsubumnc = self.interp_to_full_mesh(self.woutdata["bsubumnc"])
+        self.bsubvmnc = self.interp_to_full_mesh(self.woutdata["bsubvmnc"])
+        self.bsubsmns = self.interp_to_full_mesh(self.woutdata["bsubsmns"])
+        self.currumnc = self.interp_to_full_mesh(self.woutdata["currumnc"])
+        self.currvmnc = self.interp_to_full_mesh(self.woutdata["currvmnc"])
+        self.bsupumnc = self.interp_to_full_mesh(self.woutdata["bsupumnc"])
+        self.bsupvmnc = self.interp_to_full_mesh(self.woutdata["bsupvmnc"])
 
-    def get_var(self, key, typ, s_idx=np.s_[:]):
-        if self.woutdata[key].shape[1] == len(self.woutdata["xn"]):
-            ms = self.woutdata["xm"]
-            ns = self.woutdata["xn"]
-        elif self.woutdata[key].shape[1] == len(self.woutdata["xn_nyq"]):
-            ms = self.woutdata["xm_nyq"]
-            ns = self.woutdata["xn_nyq"]
-        else:
-            raise (ValueError("Incorrect variable name?"))
-        return vh.genvar(self.woutdata[key][s_idx].T, self.th, self.ph, ms, ns, typ=typ)
+    def radial_derivative(self, xmn):
+        return np.gradient(xmn, self.s, axis=0, edge_order=2)
+
+    def get_coef_rad_derivatives(self):
+        self.d_rmnc_ds = self.radial_derivative(self.rmnc)
+        self.d_zmns_ds = self.radial_derivative(self.zmns)
+        self.d_lmns_ds = self.radial_derivative(self.lmns)
+        self.d_gmnc_ds = self.radial_derivative(self.gmnc)
+        self.d_bmnc_ds = self.radial_derivative(self.bmnc)
+        self.d_bsubumnc_ds = self.radial_derivative(self.bsubumnc)
+        self.d_bsubvmnc_ds = self.radial_derivative(self.bsubvmnc)
+        self.d_bsubsmns_ds = self.radial_derivative(self.bsubsmns)
+        self.d_currumnc_ds = self.radial_derivative(self.currumnc)
+        self.d_currvmnc_ds = self.radial_derivative(self.currvmnc)
+        self.d_bsupumnc_ds = self.radial_derivative(self.bsupumnc)
+        self.d_bsupvmnc_ds = self.radial_derivative(self.bsupvmnc)
+
+    def get_vars_new(self):
+        self.rs = self.wrap_invert_fourier(self.rmnc, kind="cos")
+        self.zs = self.wrap_invert_fourier(self.zmns, kind="sin")
+        self.xs = self.rs * np.cos(self.ph)
+        self.ys = self.rs * np.sin(self.ph)
+        self.ls = self.wrap_invert_fourier(self.lmns, kind="sin")
+        self.sqrt_g = self.wrap_invert_fourier(self.gmnc, kind="cos")
+        self.mod_b = self.wrap_invert_fourier(self.bmnc, kind="cos")
+
+    def get_derivatives_new(self):
+        self.get_coef_rad_derivatives()
+        self.dr_ds = self.wrap_invert_fourier(self.d_rmnc_ds, kind="cos")
+        self.dr_dth = self.wrap_invert_fourier(
+            self.rmnc, kind="cos", deriv_order=1, deriv_dir="th"
+        )
+        self.dr_dph = self.wrap_invert_fourier(
+            self.rmnc, kind="cos", deriv_order=1, deriv_dir="ph"
+        )
+        self.dz_ds = self.wrap_invert_fourier(self.d_zmns_ds, kind="sin")
+        self.dz_dth = self.wrap_invert_fourier(
+            self.zmns, kind="sin", deriv_order=1, deriv_dir="th"
+        )
+        self.dz_dph = self.wrap_invert_fourier(
+            self.zmns, kind="sin", deriv_order=1, deriv_dir="ph"
+        )
+
+    def get_sub_base(self):
+        sph = np.sin(self.ph)
+        cph = np.cos(self.ph)
+        self.e_sub_s = np.array(
+            [
+                self.ders["dr_ds"] * cph,
+                self.ders["dr_ds"] * sph,
+                self.ders["dz_ds"],
+            ]
+        )
+        self.e_sub_th = np.array(
+            [
+                self.ders["dr_dth"] * cph,
+                self.ders["dr_dth"] * sph,
+                self.ders["dz_dth"],
+            ]
+        )
+        self.e_sub_ph = np.array(
+            [
+                self.ders["dr_dph"] * cph - self.vars["R"] * sph,
+                self.ders["dr_dph"] * sph + self.vars["R"] * cph,
+                self.ders["dz_dph"],
+            ]
+        )
 
     def get_vars(self, s_idx=np.s_[:]):
         R = self.get_var("rmnc", "c", s_idx=s_idx)
@@ -230,21 +298,29 @@ class Vmec:
         )
         self.vecs["e_ph"] = np.array(
             [
-                dr_dph * cph[None, None, :] - self.vars["R"] * sph[None, None, :],
-                dr_dph * sph[None, None, :] + self.vars["R"] * cph[None, None, :],
+                dr_dph * cph[None, None, :]
+                - self.vars["R"] * sph[None, None, :],
+                dr_dph * sph[None, None, :]
+                + self.vars["R"] * cph[None, None, :],
                 dz_dph,
             ]
         )
         self.vecs["grad_s"] = (
-            np.cross(self.vecs["e_th"], self.vecs["e_ph"], axisa=0, axisb=0, axisc=0)
+            np.cross(
+                self.vecs["e_th"], self.vecs["e_ph"], axisa=0, axisb=0, axisc=0
+            )
             / self.vars["sqrt_g"]
         )
         self.vecs["grad_th"] = (
-            np.cross(self.vecs["e_ph"], self.vecs["e_s"], axisa=0, axisb=0, axisc=0)
+            np.cross(
+                self.vecs["e_ph"], self.vecs["e_s"], axisa=0, axisb=0, axisc=0
+            )
             / self.vars["sqrt_g"]
         )
         self.vecs["grad_ph"] = (
-            np.cross(self.vecs["e_s"], self.vecs["e_th"], axisa=0, axisb=0, axisc=0)
+            np.cross(
+                self.vecs["e_s"], self.vecs["e_th"], axisa=0, axisb=0, axisc=0
+            )
             / self.vars["sqrt_g"]
         )
 
@@ -271,9 +347,60 @@ class Vmec:
                 )
         return out
 
+    def wrap_invert_fourier(self, xmn, deriv_order=0, deriv_dir="", kind=""):
+        if xmn.shape[1] == self.nm_tot:
+            is_nyq = False
+        elif xmn.shape[1] == self.nm_nyq_tot:
+            is_nyq = True
+        else:
+            raise ValueError("Incorrect shape")
+        if is_nyq:
+            return invert_fourier(
+                xmn,
+                self.xm_nyq,
+                self.xn_nyq,
+                self.n_th,
+                self.n_ph,
+                deriv_order,
+                deriv_dir,
+                kind,
+            )
+        else:
+            return invert_fourier(
+                xmn,
+                self.xm,
+                self.xn,
+                self.n_th,
+                self.n_ph,
+                deriv_order,
+                deriv_dir,
+                kind,
+            )
+
     def get_axis(self):
         xs, ys, zs = self.get_xyzs_old(0)
         return xs[0], ys[0], zs[0]
+
+    def print_vars(self):
+        for key in sorted(self.woutdata.keys()):
+            print(key)
+
+    def print_sizes(self):
+        for key in sorted(self.woutdata.keys()):
+            print(key, self.woutdata[key].shape)
+
+    # def get_var(self, key, typ, s_idx=np.s_[:]):
+    #     if self.woutdata[key].shape[1] == len(self.woutdata["xn"]):
+    #         ms = self.woutdata["xm"]
+    #         ns = self.woutdata["xn"]
+    #     elif self.woutdata[key].shape[1] == len(self.woutdata["xn_nyq"]):
+    #         ms = self.woutdata["xm_nyq"]
+    #         ns = self.woutdata["xn_nyq"]
+    #     else:
+    #         raise (ValueError("Incorrect variable name?"))
+    #     return vh.genvar(
+    #         self.woutdata[key][s_idx].T, self.th, self.ph, ms, ns, typ=typ
+    #     )
 
     # def plot_surf(self, ax=None, s_idx=-1, quantity=None, **kwargs):
     #     xyzs = self.get_xyzs(s_idx)
