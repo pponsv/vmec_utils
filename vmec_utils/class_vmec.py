@@ -39,6 +39,9 @@ class Vmec:
         self.get_coefs_full_mesh()
         self.th = np.linspace(0, 2 * np.pi, n_th, endpoint=False)
         self.ph = np.linspace(0, 2 * np.pi, n_ph, endpoint=False)
+        self.compute_surface_variables()
+        self.compute_derivatives()
+        self.compute_sub_base()
 
     def read_woutdata(self, woutfile):
         with netcdf_file(woutfile, "r") as wfile:
@@ -51,10 +54,11 @@ class Vmec:
         """
         f = interp1d(
             self.s_half,
-            xmn[1:, :],
+            xmn[1:],
             fill_value="extrapolate",  # type: ignore
             axis=0,
-            kind="cubic",
+            # kind="cubic",
+            kind="linear",
         )
         return f(self.s)
 
@@ -93,7 +97,7 @@ class Vmec:
         self.d_bsupumnc_ds = self.radial_derivative(self.bsupumnc)
         self.d_bsupvmnc_ds = self.radial_derivative(self.bsupvmnc)
 
-    def get_vars_new(self):
+    def compute_surface_variables(self):
         self.rs = self.wrap_invert_fourier(self.rmnc, kind="cos")
         self.zs = self.wrap_invert_fourier(self.zmns, kind="sin")
         self.xs = self.rs * np.cos(self.ph)
@@ -102,7 +106,7 @@ class Vmec:
         self.sqrt_g = self.wrap_invert_fourier(self.gmnc, kind="cos")
         self.mod_b = self.wrap_invert_fourier(self.bmnc, kind="cos")
 
-    def get_derivatives_new(self):
+    def compute_derivatives(self):
         self.get_coef_rad_derivatives()
         self.dr_ds = self.wrap_invert_fourier(self.d_rmnc_ds, kind="cos")
         self.dr_dth = self.wrap_invert_fourier(
@@ -119,29 +123,48 @@ class Vmec:
             self.zmns, kind="sin", deriv_order=1, deriv_dir="ph"
         )
 
-    def get_sub_base(self):
+    def compute_sub_base(self):
         sph = np.sin(self.ph)
         cph = np.cos(self.ph)
         self.e_sub_s = np.array(
             [
-                self.ders["dr_ds"] * cph,
-                self.ders["dr_ds"] * sph,
-                self.ders["dz_ds"],
+                self.dr_ds * cph,
+                self.dr_ds * sph,
+                self.dz_ds,
             ]
         )
         self.e_sub_th = np.array(
             [
-                self.ders["dr_dth"] * cph,
-                self.ders["dr_dth"] * sph,
-                self.ders["dz_dth"],
+                self.dr_dth * cph,
+                self.dr_dth * sph,
+                self.dz_dth,
             ]
         )
         self.e_sub_ph = np.array(
             [
-                self.ders["dr_dph"] * cph - self.vars["R"] * sph,
-                self.ders["dr_dph"] * sph + self.vars["R"] * cph,
-                self.ders["dz_dph"],
+                self.dr_dph * cph - self.rs * sph,
+                self.dr_dph * sph + self.rs * cph,
+                self.dz_dph,
             ]
+        )
+        self.sqrt_g = np.einsum(
+            "ijkl,ijkl->jkl",
+            self.e_sub_s,
+            np.cross(self.e_sub_th, self.e_sub_ph, axisa=0, axisb=0, axisc=0),
+        )
+
+    def compute_super_base(self):
+        self.e_sup_s = (
+            np.cross(self.e_sub_th, self.e_sub_ph, axisa=0, axisb=0, axisc=0)
+            / self.sqrt_g
+        )
+        self.e_sup_th = (
+            np.cross(self.e_sub_ph, self.e_sub_s, axisa=0, axisb=0, axisc=0)
+            / self.sqrt_g
+        )
+        self.e_sup_ph = (
+            np.cross(self.e_sub_s, self.e_sub_th, axisa=0, axisb=0, axisc=0)
+            / self.sqrt_g
         )
 
     def get_vars(self, s_idx=np.s_[:]):
