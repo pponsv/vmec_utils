@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.io import netcdf_file
 from .helper import vh
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, Akima1DInterpolator, PchipInterpolator
 from .fft_utils import invert_fourier, make_coef_array
 
 
@@ -52,14 +52,16 @@ class Vmec:
         """
         Not sure if this is done correctly
         """
-        f = interp1d(
-            self.s_half,
-            xmn[1:],
-            fill_value="extrapolate",  # type: ignore
-            axis=0,
-            # kind="cubic",
-            kind="linear",
-        )
+        # f = interp1d(
+        #     self.s_half,
+        #     xmn[1:],
+        #     fill_value="extrapolate",  # type: ignore
+        #     axis=0,
+        #     # kind="quadratic",
+        #     kind="linear",
+        # )
+        f = Akima1DInterpolator(self.s_half, xmn[1:], axis=0, extrapolate=True)
+        # f = PchipInterpolator(self.s_half, xmn[1:], axis=0, extrapolate=True)
         return f(self.s)
 
     def get_coefs_full_mesh(self):
@@ -81,6 +83,9 @@ class Vmec:
         self.bsupvmnc = self.interp_to_full_mesh(self.woutdata["bsupvmnc"])
 
     def radial_derivative(self, xmn):
+        """
+        The method can be changed
+        """
         return np.gradient(xmn, self.s, axis=0, edge_order=2)
 
     def get_coef_rad_derivatives(self):
