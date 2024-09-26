@@ -89,12 +89,19 @@ def preview_booz(booz_file):
 
     ax_3d = fig.add_subplot(221, projection="3d")
     ax_3d.plot_surface(
-        x[0], y[0], z[0], alpha=0.5, color="orange", rstride=1, cstride=1
+        x[0],
+        y[0],
+        z[0],
+        alpha=0.5,
+        color="orange",
+        # rstride=1,
+        # cstride=1,
     )
     ax_3d.set(title="LCFS")
 
-    ax_polcut = fig.add_subplot(222)
-    ax_polcut.plot(x[0, :, 0], z[0, :, 0])
+    ax_polcut = fig.add_subplot(222, projection="3d")
+    # ax_polcut.plot(x[0, :, 0], z[0, :, 0])
+    booz_plot_cut(booz_file, ax_polcut, phi_deg=-45, num_contours=5)
     ax_polcut.set_aspect("equal")
     ax_polcut.set(title="Poloidal Cut")
 
@@ -111,8 +118,8 @@ def preview_booz(booz_file):
 
 def preview_vmec(vmec_file):
     vmec = Vmec(vmec_file)
-    th = np.linspace(0, 2 * np.pi, 100)
-    ph = np.linspace(0, 2 * np.pi, 400)
+    th = np.linspace(0, 2 * np.pi, 100, endpoint=False)
+    ph = np.linspace(0, 2 * np.pi, 400, endpoint=False)
     s = vmec.s
 
     xm = vmec.woutdata["xm"].astype(int)
@@ -135,14 +142,6 @@ def preview_vmec(vmec_file):
         len(ph),
         kind="sin",
     )
-    # ps = invert_fourier(
-    #     vmec.woutdata["pmns"][-1][np.newaxis, :],
-    #     xm,
-    #     xn,
-    #     len(th),
-    #     len(ph),
-    #     kind="sin",
-    # )
     phi_cyl = ph
 
     xyz = get_xyz(rs, phi_cyl, zs)
@@ -152,12 +151,18 @@ def preview_vmec(vmec_file):
 
     ax_3d = fig.add_subplot(321, projection="3d")
     ax_3d.plot_surface(
-        x[0], y[0], z[0], alpha=0.5, color="orange", rstride=1, cstride=1
+        x[0],
+        y[0],
+        z[0],
+        alpha=0.5,
+        color="orange",
+        # rstride=1,
+        # cstride=1,
     )
     ax_3d.set(title="LCFS")
 
     ax_polcut = fig.add_subplot(322)
-    ax_polcut.plot(x[0, :, 0], z[0, :, 0])
+    vmec_plot_cut(vmec_file, ax=ax_polcut, phi_deg=-45, num_contours=5)
     ax_polcut.set_aspect("equal")
     ax_polcut.set(title="Poloidal Cut")
 
@@ -180,3 +185,111 @@ def preview_vmec(vmec_file):
 
     equal_aspect(ax_3d)
     plt.tight_layout()
+
+
+def roll_theta(arr):
+    """
+    adds the first row in the second axis to the end of the array
+    """
+    return np.append(arr, arr[:, 0, np.newaxis], axis=1)
+
+
+def vmec_plot_cut(vmec_file, ax=None, phi_deg=0, num_contours=10, **kwargs):
+    vmec = Vmec(vmec_file)
+    th = np.linspace(0, 2 * np.pi, 100, endpoint=False)
+    ph = np.linspace(0, 2 * np.pi, 400, endpoint=False)
+    ph_idx = np.argmin(np.abs(ph - np.deg2rad(phi_deg) % (2 * np.pi)))
+    print(ph_idx, np.deg2rad(phi_deg))
+    s = vmec.s
+
+    xm = vmec.woutdata["xm"].astype(int)
+    xn = vmec.woutdata["xn"].astype(int)
+    print(xm, xn)
+
+    rs = invert_fourier(
+        vmec.woutdata["rmnc"],
+        xm,
+        xn,
+        len(th),
+        len(ph),
+        kind="cos",
+    )
+    zs = invert_fourier(
+        vmec.woutdata["zmns"],
+        xm,
+        xn,
+        len(th),
+        len(ph),
+        kind="sin",
+    )
+
+    plot_kwargs = dict(c="k", alpha=0.6)
+    plot_kwargs.update(kwargs)
+    if ax is None:
+        fig, ax = plt.subplots(1, 1)
+    # roll_theta for the plot to be closed, but not before to avoid double plotting
+    ax.plot(rs[:, ::10, ph_idx], zs[:, ::10, ph_idx], lw=1, **plot_kwargs)
+    rs = roll_theta(rs)
+    zs = roll_theta(zs)
+    for i in np.arange(rs.shape[0] - 1, 0, -rs.shape[0] // num_contours):
+        ax.plot(rs[i, :, ph_idx], zs[i, :, ph_idx], **plot_kwargs)
+    ax.set_aspect("equal")
+
+
+def booz_plot_cut(booz_file, ax=None, phi_deg=0, num_contours=10, **kwargs):
+    booz = Booz(booz_file)
+    th = np.linspace(0, 2 * np.pi, 100, endpoint=False)
+    ph = np.linspace(0, 2 * np.pi, 400, endpoint=False)
+    ph_idx = np.argmin(np.abs(ph - np.deg2rad(phi_deg) % (2 * np.pi)))
+    print(ph_idx, np.deg2rad(phi_deg))
+    s = booz.s_vmec
+
+    rs = invert_fourier(
+        booz.woutdata["rmnc_b"],
+        booz.woutdata["ixm_b"],
+        booz.woutdata["ixn_b"],
+        len(th),
+        len(ph),
+        kind="cos",
+    )
+    zs = invert_fourier(
+        booz.woutdata["zmns_b"],
+        booz.woutdata["ixm_b"],
+        booz.woutdata["ixn_b"],
+        len(th),
+        len(ph),
+        kind="sin",
+    )
+    ps = invert_fourier(
+        booz.woutdata["pmns_b"],
+        booz.woutdata["ixm_b"],
+        booz.woutdata["ixn_b"],
+        len(th),
+        len(ph),
+        kind="sin",
+    )
+    phi_cyl = ph + ps
+    xyz = get_xyz(rs, phi_cyl, zs)
+    x, y, z = xyz
+    print(x.shape)
+    plot_kwargs = dict(c="k", alpha=0.6)
+    plot_kwargs.update(kwargs)
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection="3d"))
+    # roll_theta for the plot to be closed, but not before to avoid double plotting
+    for idx in range(x.shape[1] // 10):
+        ax.plot(
+            x[:, 10 * idx, ph_idx],
+            y[:, 10 * idx, ph_idx],
+            z[:, 10 * idx, ph_idx],
+            lw=1,
+            **plot_kwargs
+        )
+    x = roll_theta(x)
+    y = roll_theta(y)
+    z = roll_theta(z)
+    for i in np.arange(rs.shape[0] - 1, 0, -rs.shape[0] // num_contours):
+        ax.plot(
+            x[i, :, ph_idx], y[i, :, ph_idx], z[i, :, ph_idx], **plot_kwargs
+        )
+    ax.set_aspect("equal")

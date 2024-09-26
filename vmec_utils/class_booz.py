@@ -13,7 +13,8 @@ class MyBounds:
         x = kwargs["x_new"]
         tmax = bool(np.all(x <= self.xmax))
         tmin = bool(np.all(x >= self.xmin))
-        return tmax and tmin
+        result = tmax and tmin
+        return result
 
 
 class Booz:
@@ -119,15 +120,23 @@ class Booz:
 
     def posdifsq(self, theta, phi, s_idx, xyz):
         xyz = np.array(xyz)
-        xyz_surf = np.array([self.get_single_xyz(theta=theta, phi=phi, s_idx=s_idx)])
+        xyz_surf = np.array(
+            [self.get_single_xyz(theta=theta, phi=phi, s_idx=s_idx)]
+        )
         return np.sum((xyz - xyz_surf) ** 2)
 
     def get_single_xyz(self, theta, phi, s_idx=-1):
         ms = self.woutdata["ixm_b"]
         ns = self.woutdata["ixn_b"]
-        R = vh.genvar(self.woutdata["rmnc_b"][s_idx].T, theta, phi, ms, ns, "c")
-        Z = vh.genvar(self.woutdata["zmns_b"][s_idx].T, theta, phi, ms, ns, "s")
-        P = vh.genvar(self.woutdata["pmns_b"][s_idx].T, theta, phi, ms, ns, "s")
+        R = vh.genvar(
+            self.woutdata["rmnc_b"][s_idx].T, theta, phi, ms, ns, "c"
+        )
+        Z = vh.genvar(
+            self.woutdata["zmns_b"][s_idx].T, theta, phi, ms, ns, "s"
+        )
+        P = vh.genvar(
+            self.woutdata["pmns_b"][s_idx].T, theta, phi, ms, ns, "s"
+        )
         PHI_CYL = phi + P
         X = R * np.cos(PHI_CYL)
         Y = R * np.sin(PHI_CYL)
@@ -141,19 +150,22 @@ class Booz:
         tfun = lambda thphi: self.posdifsq(
             theta=thphi[0], phi=thphi[1], s_idx=s_idx, xyz=xyz_0
         )
+        print(xyz_0, tfun(init))
         bounds = MyBounds(xmin=[-np.pi, 0], xmax=[np.pi, np.pi * 2])
         res = basinhopping(
             tfun,
             init,
-            100,
-            T=20.0,
-            stepsize=5.0,
+            15,
+            T=5.0,
+            stepsize=1.0,
             accept_test=bounds,
             # callback=callback,
         )
         if not res.success:
             print("unsuccessful")
         theta, phi = res.x[0], res.x[1]
+        print("result: ", tfun(res.x))
+        print(res)
         return theta, phi
 
     def get_xyzs(self, s_idx=None):
@@ -169,13 +181,31 @@ class Booz:
         ms = self.woutdata["ixm_b"]
         ns = self.woutdata["ixn_b"]
         dr_ds = +vh.dgen_ds(
-            self.woutdata["rmnc_b"].T, self.s, self.th, self.ph, ms, ns, typ="c"
+            self.woutdata["rmnc_b"].T,
+            self.s,
+            self.th,
+            self.ph,
+            ms,
+            ns,
+            typ="c",
         )
         dz_ds = +vh.dgen_ds(
-            self.woutdata["zmns_b"].T, self.s, self.th, self.ph, ms, ns, typ="s"
+            self.woutdata["zmns_b"].T,
+            self.s,
+            self.th,
+            self.ph,
+            ms,
+            ns,
+            typ="s",
         )
         dph_ds = +vh.dgen_ds(
-            self.woutdata["pmns_b"].T, self.s, self.th, self.ph, ms, ns, typ="s"
+            self.woutdata["pmns_b"].T,
+            self.s,
+            self.th,
+            self.ph,
+            ms,
+            ns,
+            typ="s",
         )
         dr_dth = -vh.genvar_modi_new(
             self.woutdata["rmnc_b"].T, self.th, self.ph, ms, ns, ms, typ="s"
