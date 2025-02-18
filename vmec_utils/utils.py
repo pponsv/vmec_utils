@@ -194,7 +194,9 @@ def roll_theta(arr):
     return np.append(arr, arr[:, 0, np.newaxis], axis=1)
 
 
-def vmec_plot_cut(vmec_file, ax=None, phi_deg=0, num_contours=10, **kwargs):
+def vmec_plot_cut(
+    vmec_file, ax=None, phi_deg=0, num_contours=10, num_th_cuts=10, **kwargs
+):
     vmec = Vmec(vmec_file)
     th = np.linspace(0, 2 * np.pi, 100, endpoint=False)
     ph = np.linspace(0, 2 * np.pi, 400, endpoint=False)
@@ -223,15 +225,21 @@ def vmec_plot_cut(vmec_file, ax=None, phi_deg=0, num_contours=10, **kwargs):
         kind="sin",
     )
 
-    plot_kwargs = dict(c="k", alpha=0.6)
+    plot_kwargs = dict(c="k", lw=1, alpha=0.6)
     plot_kwargs.update(kwargs)
     if ax is None:
         fig, ax = plt.subplots(1, 1)
     # roll_theta for the plot to be closed, but not before to avoid double plotting
-    ax.plot(rs[:, ::10, ph_idx], zs[:, ::10, ph_idx], lw=1, **plot_kwargs)
+    for idx in np.linspace(0, rs.shape[1], num_th_cuts, endpoint=False).astype(
+        int
+    ):
+        ax.plot(rs[:, idx, ph_idx], zs[:, idx, ph_idx], **plot_kwargs)
+    ax.plot(rs[0, -1, ph_idx], zs[0, -1, ph_idx], "x", ms=3, **plot_kwargs)
+    # ax.plot(rs[:, ::10, ph_idx], zs[:, ::10, ph_idx], **plot_kwargs)
     rs = roll_theta(rs)
     zs = roll_theta(zs)
-    for i in np.arange(rs.shape[0] - 1, 0, -rs.shape[0] // num_contours):
+    for si in np.linspace(1, 0, num_contours, endpoint=False):
+        i = np.argmin(np.abs(s - si**2))
         ax.plot(rs[i, :, ph_idx], zs[i, :, ph_idx], **plot_kwargs)
     ax.set_aspect("equal")
 

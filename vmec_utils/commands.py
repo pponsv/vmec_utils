@@ -14,7 +14,7 @@ def call_vmec(folderpath, extension):
 
 
 def make_woutname_vmec(folderpath, extension):
-    return f"{folderpath}wout_{extension}.nc"
+    return f"{folderpath}/wout_{extension}.nc"
 
 
 ##  BOOZ_XFORM
@@ -31,7 +31,7 @@ def make_xform_input(folderpath, ext, s=None):
         print(s)
     elif s == "all":
         s = np.arange(1, ns)
-    with open(f"{folderpath}in_booz.{ext}", "w") as f:
+    with open(f"{folderpath}/in_booz.{ext}", "w") as f:
         f.write(f"{6*mpol} {3*ntor}\n")
         f.write(f"{ext}\n")
         [f.write(f"{i} ") for i in s]
