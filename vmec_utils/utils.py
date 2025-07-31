@@ -195,18 +195,29 @@ def roll_theta(arr):
 
 
 def vmec_plot_cut(
-    vmec_file, ax=None, phi_deg=0, num_contours=10, num_th_cuts=10, **kwargs
+    vmec_file,
+    ax=None,
+    phi_deg=0,
+    num_contours=10,
+    num_th_cuts=10,
+    n_th=100,
+    n_ph=100,
+    **kwargs,
 ):
     vmec = Vmec(vmec_file)
-    th = np.linspace(0, 2 * np.pi, 100, endpoint=False)
-    ph = np.linspace(0, 2 * np.pi, 400, endpoint=False)
+    th = np.linspace(0, 2 * np.pi, n_th, endpoint=False)
+    ph = np.linspace(0, 2 * np.pi, n_ph, endpoint=False)
     ph_idx = np.argmin(np.abs(ph - np.deg2rad(phi_deg) % (2 * np.pi)))
-    print(ph_idx, np.deg2rad(phi_deg))
+    print(
+        ph_idx,
+        np.deg2rad(phi_deg),
+        np.abs(ph - np.deg2rad(phi_deg) % (2 * np.pi))[ph_idx],
+    )
     s = vmec.s
 
     xm = vmec.woutdata["xm"].astype(int)
     xn = vmec.woutdata["xn"].astype(int)
-    print(xm, xn)
+    # print(xm, xn)
 
     rs = invert_fourier(
         vmec.woutdata["rmnc"],
@@ -242,6 +253,7 @@ def vmec_plot_cut(
         i = np.argmin(np.abs(s - si**2))
         ax.plot(rs[i, :, ph_idx], zs[i, :, ph_idx], **plot_kwargs)
     ax.set_aspect("equal")
+    return rs[0, -1, ph_idx], zs[0, -1, ph_idx]  # return axis
 
 
 def booz_plot_cut(booz_file, ax=None, phi_deg=0, num_contours=10, **kwargs):
@@ -291,7 +303,7 @@ def booz_plot_cut(booz_file, ax=None, phi_deg=0, num_contours=10, **kwargs):
             y[:, 10 * idx, ph_idx],
             z[:, 10 * idx, ph_idx],
             lw=1,
-            **plot_kwargs
+            **plot_kwargs,
         )
     x = roll_theta(x)
     y = roll_theta(y)
