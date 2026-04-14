@@ -2,7 +2,7 @@ import numpy as np
 from scipy.io import netcdf_file
 from scipy.optimize import basinhopping
 
-from .helper import vh
+from .vmec_helper import vh
 
 
 class MyBounds:

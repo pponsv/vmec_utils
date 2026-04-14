@@ -1,9 +1,10 @@
+from time import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 # import vmec_helper as vh
 import vmec_utils as vl
-from time import time
 
 
 def make_time(fun, *args, **kwargs):
@@ -65,7 +66,8 @@ def make_test(vfile, th, ph):
 if __name__ == "__main__":
     #   Initialize
 
-    vfile = "/home/pedro/MEGA/00_doctorado/research/VMEC/TJ-II/100_44_64.0.0/wout_100_44_64_0.0.nc"
+    # vfile = "/home/pedro/MEGA/00_doctorado/research/VMEC/TJ-II/100_44_64.0.0/wout_100_44_64_0.0.nc"
+    vfile = "/home/IPP-HGW/pepon/Nextcloud/00_postdoc/00_research/00_magnetic_configurations/test_phiedge/vmecs/output/iter_1/wout_iter_1.nc"
 
     thetas = np.linspace(0, 2 * np.pi, 100)
     phis = np.linspace(0, 2 * np.pi, 400)

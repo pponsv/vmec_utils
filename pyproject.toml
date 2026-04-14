@@ -1,0 +1,11 @@
+[build-system]
+build-backend = 'mesonpy'
+requires = ['meson-python', "numpy", "ninja"]
+
+[project]
+name = "vmec_utils"
+version = "0.1.0"
+license = "MIT"
+description = "Calculates Lomb periodograms"
+dependencies = ["numpy", "matplotlib", "h5py", "meson", "ninja"]
+readme = "README.md"
