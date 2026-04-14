@@ -1,7 +1,9 @@
-import glob, os
-from scipy.io import netcdf_file
-import numpy as np
+import glob
+import os
 from time import time
+
+import numpy as np
+from scipy.io import netcdf_file
 
 
 def delta_vec(vec):
@@ -76,5 +78,5 @@ def timer(func, *args, **kwargs):
     t1 = time()
     result = func(*args, **kwargs)
     t2 = time()
-    print(f"{func}:\t {(t2-t1):.6f}s")
+    print(f"{func}:\t {(t2 - t1):.6f}s")
     return result

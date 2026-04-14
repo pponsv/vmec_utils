@@ -1,7 +1,8 @@
 import os
 import subprocess
-from scipy.io import netcdf_file
+
 import numpy as np
+from scipy.io import netcdf_file
 
 ##  VMEC
 
@@ -32,7 +33,7 @@ def make_xform_input(folderpath, ext, s=None):
     elif s == "all":
         s = np.arange(1, ns)
     with open(f"{folderpath}/in_booz.{ext}", "w") as f:
-        f.write(f"{6*mpol} {3*ntor}\n")
+        f.write(f"{6 * mpol} {3 * ntor}\n")
         f.write(f"{ext}\n")
         [f.write(f"{i} ") for i in s]
 

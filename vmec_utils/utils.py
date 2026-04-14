@@ -1,21 +1,15 @@
-import numpy as np
 import matplotlib.pyplot as plt
-
-from .fn import equal_aspect
-
-from .plot import make_figax_3d
+import numpy as np
 
 from .class_booz import Booz
 from .class_vmec import Vmec
+from .fn import equal_aspect
+from .plot import make_figax_3d
 
 
-def make_coef_array(
-    coefs, xm, xn, len_th, len_ph, deriv_order=0, deriv_dir=""
-):
+def make_coef_array(coefs, xm, xn, len_th, len_ph, deriv_order=0, deriv_dir=""):
     """Make a 3D array of coefficients with the correct shape to be inverted."""
-    coef_array = np.zeros(
-        (coefs.shape[0], len_th, len_ph), dtype=np.complex128
-    )
+    coef_array = np.zeros((coefs.shape[0], len_th, len_ph), dtype=np.complex128)
     if deriv_order == 0:
         coef_array[:, xm, -xn] = coefs
     elif deriv_order == 1:
@@ -241,9 +235,7 @@ def vmec_plot_cut(
     if ax is None:
         fig, ax = plt.subplots(1, 1)
     # roll_theta for the plot to be closed, but not before to avoid double plotting
-    for idx in np.linspace(0, rs.shape[1], num_th_cuts, endpoint=False).astype(
-        int
-    ):
+    for idx in np.linspace(0, rs.shape[1], num_th_cuts, endpoint=False).astype(int):
         ax.plot(rs[:, idx, ph_idx], zs[:, idx, ph_idx], **plot_kwargs)
     ax.plot(rs[0, -1, ph_idx], zs[0, -1, ph_idx], "x", ms=3, **plot_kwargs)
     # ax.plot(rs[:, ::10, ph_idx], zs[:, ::10, ph_idx], **plot_kwargs)
@@ -309,7 +301,5 @@ def booz_plot_cut(booz_file, ax=None, phi_deg=0, num_contours=10, **kwargs):
     y = roll_theta(y)
     z = roll_theta(z)
     for i in np.arange(rs.shape[0] - 1, 0, -rs.shape[0] // num_contours):
-        ax.plot(
-            x[i, :, ph_idx], y[i, :, ph_idx], z[i, :, ph_idx], **plot_kwargs
-        )
+        ax.plot(x[i, :, ph_idx], y[i, :, ph_idx], z[i, :, ph_idx], **plot_kwargs)
     ax.set_aspect("equal")

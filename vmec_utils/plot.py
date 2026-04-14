@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from .fn import normalize, equal_aspect
-from . import Booz
-from . import Vmec
+
+from . import Booz, Vmec
+from .fn import equal_aspect, normalize
 
 
 def make_figax_3d(**kwargs):
@@ -89,7 +89,7 @@ class Plotter:
         ax.set(
             xlabel="R [m]",
             ylabel="Z [m]",
-            title=rf"$\varphi$={180*self.data.ph[phi_idx]/np.pi:.2f}º",
+            title=rf"$\varphi$={180 * self.data.ph[phi_idx] / np.pi:.2f}º",
         )
         ax.set_aspect("equal")
         return ax

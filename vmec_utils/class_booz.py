@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.io import netcdf_file
 from scipy.optimize import basinhopping
+
 from .helper import vh
 
 
@@ -120,23 +121,15 @@ class Booz:
 
     def posdifsq(self, theta, phi, s_idx, xyz):
         xyz = np.array(xyz)
-        xyz_surf = np.array(
-            [self.get_single_xyz(theta=theta, phi=phi, s_idx=s_idx)]
-        )
+        xyz_surf = np.array([self.get_single_xyz(theta=theta, phi=phi, s_idx=s_idx)])
         return np.sum((xyz - xyz_surf) ** 2)
 
     def get_single_xyz(self, theta, phi, s_idx=-1):
         ms = self.woutdata["ixm_b"]
         ns = self.woutdata["ixn_b"]
-        R = vh.genvar(
-            self.woutdata["rmnc_b"][s_idx].T, theta, phi, ms, ns, "c"
-        )
-        Z = vh.genvar(
-            self.woutdata["zmns_b"][s_idx].T, theta, phi, ms, ns, "s"
-        )
-        P = vh.genvar(
-            self.woutdata["pmns_b"][s_idx].T, theta, phi, ms, ns, "s"
-        )
+        R = vh.genvar(self.woutdata["rmnc_b"][s_idx].T, theta, phi, ms, ns, "c")
+        Z = vh.genvar(self.woutdata["zmns_b"][s_idx].T, theta, phi, ms, ns, "s")
+        P = vh.genvar(self.woutdata["pmns_b"][s_idx].T, theta, phi, ms, ns, "s")
         PHI_CYL = phi + P
         X = R * np.cos(PHI_CYL)
         Y = R * np.sin(PHI_CYL)
