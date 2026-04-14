@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from . import Booz, Vmec
+from .class_booz import Booz
+from .class_vmec import Vmec
 from .fn import equal_aspect, normalize
 
 
