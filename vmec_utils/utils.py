@@ -7,6 +7,24 @@ from .fn import equal_aspect
 from .plot import make_figax_3d
 
 
+def plot_rationals(ax, mnum=8, mden=8):
+    ratios = {}
+    for num in range(1, mnum):
+        for den in range(1, mden):
+            if 0.73 < num / den < 1.21:
+                ratio = np.round(num / den, 6)
+                order = 10 / np.sqrt(num**2 + den**2)
+                if ratio in ratios:
+                    if ratios[ratio][0] > order:
+                        continue
+                ratios[ratio] = order, num, den
+
+    for ratio in ratios:
+        order, num, den = ratios[ratio]
+        ax.axhline(ratio, lw=order, c="k", alpha=0.5)
+        ax.text(1, ratio, f"{num}/{den}", rotation=30)
+
+
 def make_coef_array(coefs, xm, xn, len_th, len_ph, deriv_order=0, deriv_dir=""):
     """Make a 3D array of coefficients with the correct shape to be inverted."""
     coef_array = np.zeros((coefs.shape[0], len_th, len_ph), dtype=np.complex128)
@@ -118,7 +136,6 @@ def preview_vmec(vmec_file):
 
     xm = vmec.woutdata["xm"].astype(int)
     xn = vmec.woutdata["xn"].astype(int)
-    print(xm, xn)
 
     rs = invert_fourier(
         vmec.woutdata["rmnc"][-1][np.newaxis, :],
@@ -202,11 +219,11 @@ def vmec_plot_cut(
     th = np.linspace(0, 2 * np.pi, n_th, endpoint=False)
     ph = np.linspace(0, 2 * np.pi, n_ph, endpoint=False)
     ph_idx = np.argmin(np.abs(ph - np.deg2rad(phi_deg) % (2 * np.pi)))
-    print(
-        ph_idx,
-        np.deg2rad(phi_deg),
-        np.abs(ph - np.deg2rad(phi_deg) % (2 * np.pi))[ph_idx],
-    )
+    # print(
+    #     ph_idx,
+    #     np.deg2rad(phi_deg),
+    #     np.abs(ph - np.deg2rad(phi_deg) % (2 * np.pi))[ph_idx],
+    # )
     s = vmec.s
 
     xm = vmec.woutdata["xm"].astype(int)
@@ -232,20 +249,26 @@ def vmec_plot_cut(
 
     plot_kwargs = dict(c="k", lw=1, alpha=0.6)
     plot_kwargs.update(kwargs)
+
+    lines = []
     if ax is None:
         fig, ax = plt.subplots(1, 1)
     # roll_theta for the plot to be closed, but not before to avoid double plotting
     for idx in np.linspace(0, rs.shape[1], num_th_cuts, endpoint=False).astype(int):
-        ax.plot(rs[:, idx, ph_idx], zs[:, idx, ph_idx], **plot_kwargs)
-    ax.plot(rs[0, -1, ph_idx], zs[0, -1, ph_idx], "x", ms=3, **plot_kwargs)
+        (tmp,) = ax.plot(rs[:, idx, ph_idx], zs[:, idx, ph_idx], **plot_kwargs)
+        lines.append(tmp)
+    (tmp,) = ax.plot(rs[0, -1, ph_idx], zs[0, -1, ph_idx], "x", ms=3, **plot_kwargs)
+    lines.append(tmp)
     # ax.plot(rs[:, ::10, ph_idx], zs[:, ::10, ph_idx], **plot_kwargs)
     rs = roll_theta(rs)
     zs = roll_theta(zs)
     for si in np.linspace(1, 0, num_contours, endpoint=False):
         i = np.argmin(np.abs(s - si**2))
-        ax.plot(rs[i, :, ph_idx], zs[i, :, ph_idx], **plot_kwargs)
+        (tmp,) = ax.plot(rs[i, :, ph_idx], zs[i, :, ph_idx], **plot_kwargs)
+        lines.append(tmp)
     ax.set_aspect("equal")
-    return rs[0, -1, ph_idx], zs[0, -1, ph_idx]  # return axis
+    # return rs[0, -1, ph_idx], zs[0, -1, ph_idx]  # return axis
+    return lines
 
 
 def booz_plot_cut(booz_file, ax=None, phi_deg=0, num_contours=10, **kwargs):
@@ -253,7 +276,7 @@ def booz_plot_cut(booz_file, ax=None, phi_deg=0, num_contours=10, **kwargs):
     th = np.linspace(0, 2 * np.pi, 100, endpoint=False)
     ph = np.linspace(0, 2 * np.pi, 400, endpoint=False)
     ph_idx = np.argmin(np.abs(ph - np.deg2rad(phi_deg) % (2 * np.pi)))
-    print(ph_idx, np.deg2rad(phi_deg))
+    # print(ph_idx, np.deg2rad(phi_deg))
     s = booz.s_vmec
 
     rs = invert_fourier(
@@ -283,7 +306,7 @@ def booz_plot_cut(booz_file, ax=None, phi_deg=0, num_contours=10, **kwargs):
     phi_cyl = ph + ps
     xyz = get_xyz(rs, phi_cyl, zs)
     x, y, z = xyz
-    print(x.shape)
+    # print(x.shape)
     plot_kwargs = dict(c="k", alpha=0.6)
     plot_kwargs.update(kwargs)
     if ax is None:
