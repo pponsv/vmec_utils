@@ -8,3 +8,4 @@ bld/
 .*
 
 !.gitignore
+env/
